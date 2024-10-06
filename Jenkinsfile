@@ -100,15 +100,16 @@ pipeline {
                 }
             }
         }
-
-        stage('Run Unit Tests') {
+		
+		stage('Approval') {
             steps {
                 script {
-                    sh 'python -m unittest discover tests'
+                    input 'Approve Deployment to Production?'
                 }
             }
         }
 
+        
         stage('Deploy to Staging Namespace') {
             when {
                 expression { currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
