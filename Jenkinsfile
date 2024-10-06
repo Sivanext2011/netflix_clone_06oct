@@ -54,4 +54,70 @@ pipeline {
 
                         // Verify Kubernetes access
                         sh 'kubectl get nodes'
-         
+                    }
+                }
+            }
+        }
+
+        stage('Create Kubernetes Secret') {
+            steps {
+                script {
+                    // Use the withCredentials block to access the Docker Hub credentials
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        // Create the Kubernetes secret in both staging and prod namespaces
+                        sh '''
+                            kubectl create secret docker-registry my-registry-secret \
+                                --docker-server=https://index.docker.io/v1/ \
+                                --docker-username=${DOCKER_USERNAME} \
+                                --docker-password=${DOCKER_PASSWORD} \
+                                --docker-email=sivanext@gmail.com \
+                                --namespace=staging || true
+                            kubectl create secret docker-registry my-registry-secret \
+                                --docker-server=https://index.docker.io/v1/ \
+                                --docker-username=${DOCKER_USERNAME} \
+                                --docker-password=${DOCKER_PASSWORD} \
+                                --docker-email=sivanext@gmail.com \
+                                --namespace=prod || true
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                script {
+                    sh 'kubectl apply -f k8s/deployment.yaml'
+                }
+            }
+        }
+
+        stage('Expose via Load Balancer') {
+            steps {
+                script {
+                    sh 'kubectl apply -f k8s/service.yaml'
+                }
+            }
+        }
+
+        stage('Run Unit Tests') {
+            steps {
+                script {
+                    sh 'python -m unittest discover tests'
+                }
+            }
+        }
+
+        stage('Deploy to Staging Namespace') {
+            when {
+                expression { currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
+            }
+            steps {
+                script {
+                    sh 'kubectl apply -f k8s/deployment-prod.yaml'
+                    sh 'kubectl apply -f k8s/service-prod.yaml'
+                }
+            }
+        }
+    }
+}
