@@ -4,9 +4,9 @@ pipeline {
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
         DOCKERHUB_REPO = 'sivanext/netflix_clone'
-        DOCKER_IMAGE_TAG = "sivanext/netflix_clone:${env.BUILD_ID}" // Use BUILD_ID for dynamic tagging
-        DOCKER_IMAGE_LATEST = "sivanext/netflix_clone:latest"
-        KUBECONFIG = "${env.WORKSPACE}/kubeconfig.txt"
+        DOCKER_IMAGE_TAG = "sivanext/netflix_clone:${env.BUILD_ID}"
+        DOCKER_IMAGE_LATEST = "sivanext/netflix_clone:latest" // Define the latest tag
+        KUBECONFIG = "${env.WORKSPACE}/kubeconfig.txt" // Define KUBECONFIG in environment block
     }
 
     stages {
@@ -16,17 +16,17 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
-            steps {
-                script {
-                    // Build the image with the build ID tag
-                    def image = docker.build(DOCKER_IMAGE_TAG)
+		stage('Build Docker Image') {
+			steps {
+				script {
+					// Build the image with the build ID tag
+					def image = docker.build(DOCKER_IMAGE_TAG)
 
-                    // Tag the image as 'latest' for convenience
-                    image.tag('latest')
-                }
-            }
-        }
+					// Tag the image as latest
+					docker.image(DOCKER_IMAGE_TAG).tag('latest') // Change this line to avoid the error
+				}
+			}
+		}
 
         stage('Push to DockerHub') {
             steps {
@@ -34,8 +34,7 @@ pipeline {
                     docker.withRegistry('https://index.docker.io/v1/', 'DOCKERHUB_CREDENTIALS') {
                         // Push the image with build ID tag
                         docker.image(DOCKER_IMAGE_TAG).push()
-
-                        // Push the 'latest' tag
+                        // Push the latest tag
                         docker.image(DOCKER_IMAGE_LATEST).push()
                     }
                 }
@@ -46,9 +45,16 @@ pipeline {
             steps {
                 script {
                     withCredentials([file(credentialsId: 'kubeconfig-credentials', variable: 'KUBE_CONFIG_FILE')]) {
+                        echo "Using kubeconfig from: ${KUBE_CONFIG_FILE}"
+                        // Read the content of the kubeconfig file and write it to a new file in the workspace
                         def kubeConfigContent = readFile(KUBE_CONFIG_FILE)
                         writeFile(file: 'kubeconfig.txt', text: kubeConfigContent)
-                        sh 'kubectl get nodes' // Verify Kubernetes access
+
+                        // Verify the kubeconfig file exists
+                        sh 'ls -l kubeconfig.txt' // Check if the file exists
+
+                        // Verify Kubernetes access
+                        sh 'kubectl get nodes'
                     }
                 }
             }
@@ -57,7 +63,9 @@ pipeline {
         stage('Create Kubernetes Secret') {
             steps {
                 script {
+                    // Use the withCredentials block to access the Docker Hub credentials
                     withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        // Create the Kubernetes secret in both staging and prod namespaces
                         sh '''
                             kubectl create secret docker-registry my-registry-secret \
                                 --docker-server=https://index.docker.io/v1/ \
@@ -65,7 +73,6 @@ pipeline {
                                 --docker-password=${DOCKER_PASSWORD} \
                                 --docker-email=sivanext@gmail.com \
                                 --namespace=staging || true
-                                
                             kubectl create secret docker-registry my-registry-secret \
                                 --docker-server=https://index.docker.io/v1/ \
                                 --docker-username=${DOCKER_USERNAME} \
@@ -81,8 +88,7 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    // Deploy the specific image version with the BUILD_ID
-                    sh 'kubectl set image deployment/netflix-clone netflix-clone=sivanext/netflix_clone:${env.BUILD_ID} --namespace=prod'
+                    sh 'kubectl apply -f k8s/deployment.yaml'
                 }
             }
         }
@@ -94,8 +100,8 @@ pipeline {
                 }
             }
         }
-
-        stage('Approval') {
+		
+		stage('Approval') {
             steps {
                 script {
                     input 'Approve Deployment to Production?'
@@ -103,13 +109,13 @@ pipeline {
             }
         }
 
+        
         stage('Deploy to Staging Namespace') {
             when {
                 expression { currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
             }
             steps {
                 script {
-                    // Apply staging environment deployment
                     sh 'kubectl apply -f k8s/deployment-prod.yaml'
                     sh 'kubectl apply -f k8s/service-prod.yaml'
                 }
