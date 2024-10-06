@@ -5,8 +5,8 @@ pipeline {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
         DOCKERHUB_REPO = 'sivanext/netflix_clone'
         DOCKER_IMAGE_TAG = "sivanext/netflix_clone:${env.BUILD_ID}"
-        DOCKER_IMAGE_LATEST = "sivanext/netflix_clone:latest" // Define the latest tag
-        KUBECONFIG = "${env.WORKSPACE}/kubeconfig.txt" // Define KUBECONFIG in environment block
+        DOCKER_IMAGE_LATEST = "sivanext/netflix_clone:latest" 
+        KUBECONFIG = "${env.WORKSPACE}/kubeconfig.txt"
     }
 
     stages {
@@ -16,25 +16,20 @@ pipeline {
             }
         }
 
-		stage('Build Docker Image') {
-			steps {
-				script {
-					// Build the image with the build ID tag
-					def image = docker.build(DOCKER_IMAGE_TAG)
-
-					// Tag the image as latest
-					docker.image(DOCKER_IMAGE_TAG).tag('latest') // Change this line to avoid the error
-				}
-			}
-		}
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    def image = docker.build(DOCKER_IMAGE_TAG)
+                    docker.image(DOCKER_IMAGE_TAG).tag('latest')
+                }
+            }
+        }
 
         stage('Push to DockerHub') {
             steps {
                 script {
                     docker.withRegistry('https://index.docker.io/v1/', 'DOCKERHUB_CREDENTIALS') {
-                        // Push the image with build ID tag
                         docker.image(DOCKER_IMAGE_TAG).push()
-                        // Push the latest tag
                         docker.image(DOCKER_IMAGE_LATEST).push()
                     }
                 }
@@ -45,15 +40,9 @@ pipeline {
             steps {
                 script {
                     withCredentials([file(credentialsId: 'kubeconfig-credentials', variable: 'KUBE_CONFIG_FILE')]) {
-                        echo "Using kubeconfig from: ${KUBE_CONFIG_FILE}"
-                        // Read the content of the kubeconfig file and write it to a new file in the workspace
                         def kubeConfigContent = readFile(KUBE_CONFIG_FILE)
                         writeFile(file: 'kubeconfig.txt', text: kubeConfigContent)
-
-                        // Verify the kubeconfig file exists
-                        sh 'ls -l kubeconfig.txt' // Check if the file exists
-
-                        // Verify Kubernetes access
+                        sh 'ls -l kubeconfig.txt'
                         sh 'kubectl get nodes'
                     }
                 }
@@ -63,9 +52,7 @@ pipeline {
         stage('Create Kubernetes Secret') {
             steps {
                 script {
-                    // Use the withCredentials block to access the Docker Hub credentials
                     withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                        // Create the Kubernetes secret in both staging and prod namespaces
                         sh '''
                             kubectl create secret docker-registry my-registry-secret \
                                 --docker-server=https://index.docker.io/v1/ \
@@ -85,6 +72,17 @@ pipeline {
             }
         }
 
+        stage('Update Kubernetes Deployment YAML') {
+            steps {
+                script {
+                    sh """
+                        sed -i 's|sivanext/netflix_clone:latest|${DOCKER_IMAGE_TAG}|' k8s/deployment.yaml
+                        sed -i 's|sivanext/netflix_clone:latest|${DOCKER_IMAGE_TAG}|' k8s/deployment-prod.yaml
+                    """
+                }
+            }
+        }
+
         stage('Deploy to Kubernetes') {
             steps {
                 script {
@@ -100,8 +98,8 @@ pipeline {
                 }
             }
         }
-		
-		stage('Approval') {
+
+        stage('Approval') {
             steps {
                 script {
                     input 'Approve Deployment to Production?'
@@ -109,7 +107,6 @@ pipeline {
             }
         }
 
-        
         stage('Deploy to Staging Namespace') {
             when {
                 expression { currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
