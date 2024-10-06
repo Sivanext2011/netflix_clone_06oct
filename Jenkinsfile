@@ -16,16 +16,17 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
-            steps {
-                script {
-                    // Build the image with the build ID tag
-                    def image = docker.build(DOCKER_IMAGE_TAG)
-                    // Tag the image as latest
-                    docker.image(DOCKER_IMAGE_TAG).tag(DOCKER_IMAGE_LATEST)
-                }
-            }
-        }
+		stage('Build Docker Image') {
+			steps {
+				script {
+					// Build the image with the build ID tag
+					def image = docker.build(DOCKER_IMAGE_TAG)
+
+					// Tag the image as latest
+					docker.image(DOCKER_IMAGE_TAG).tag('latest') // Change this line to avoid the error
+				}
+			}
+		}
 
         stage('Push to DockerHub') {
             steps {
