@@ -55,6 +55,38 @@ pipeline {
             }
         }
 
+
+		stage('Create Kubernetes Secret') {
+			steps {
+				script {
+					// Set the KUBECONFIG for this stage
+					sh 'export KUBECONFIG=${WORKSPACE}/kubeconfig.txt'
+					
+					// Use the withCredentials block to access the Docker Hub credentials
+					withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+						sh '''
+							kubectl create secret docker-registry my-registry-secret \
+								--docker-server=https://index.docker.io/v1/ \
+								--docker-username=${DOCKER_USERNAME} \
+								--docker-password=${DOCKER_PASSWORD} \
+								--docker-email=sivanext@gmail.com \
+								--namespace=staging
+						'''
+						
+												sh '''
+							kubectl create secret docker-registry my-registry-secret \
+								--docker-server=https://index.docker.io/v1/ \
+								--docker-username=${DOCKER_USERNAME} \
+								--docker-password=${DOCKER_PASSWORD} \
+								--docker-email=sivanext@gmail.com \
+								--namespace=prod
+						'''
+					}
+				}
+			}
+		}
+
+
         stage('Deploy to Kubernetes') {
             steps {
                 script {

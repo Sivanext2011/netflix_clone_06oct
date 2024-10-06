@@ -13,6 +13,8 @@ spec:
       labels:
         app: netflix-clone
     spec:
+      imagePullSecrets:
+      - name: my-registry-secret  # Reference your secret here
       containers:
       - name: netflix-clone
         image: sivanext/netflix_clone:latest
