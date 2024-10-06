@@ -19,7 +19,7 @@ spec:
       - name: my-registry-secret  # Reference your secret here
       containers:
       - name: netflix-clone
-        image: sivanext/netflix_clone:latest
+        image: sivanext/netflix_clone:${BUILD_ID} # Use the dynamic tag based on Jenkins BUILD_ID
         imagePullPolicy: Always
         ports:
         - containerPort: 5000
