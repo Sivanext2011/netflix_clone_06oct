@@ -37,12 +37,14 @@ pipeline {
                 // Load the kubeconfig file from Jenkins credentials
                 withCredentials([file(credentialsId: 'kubeconfig-credentials', variable: 'KUBE_CONFIG_FILE')]) {
                     sh "cp ${KUBE_CONFIG_FILE} $KUBECONFIG"
+		    sh "cat $KUBECONFIG"		
                 }
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
+ 		sh 'kubectl get nodes'
                 sh 'kubectl apply -f k8s/deployment.yaml'
             }
         }
