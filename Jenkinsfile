@@ -32,17 +32,24 @@ pipeline {
             }
         }
 
-	stage('Prepare Kubeconfig') {
-	    steps {
-        	script {
-	            withCredentials([file(credentialsId: 'kubeconfig-credentials', variable: 'KUBE_CONFIG_FILE')]) {
-                	echo "Using kubeconfig from: ${KUBE_CONFIG_FILE}"
-        	        sh "cat ${KUBE_CONFIG_FILE}" // Be careful with sensitive info
-	                env.KUBECONFIG = "${KUBE_CONFIG_FILE}"
-        	    }
-	        }
-	    }
-	}
+
+stage('Prepare Kubeconfig') {
+    steps {
+        script {
+            withCredentials([file(credentialsId: 'kubeconfig-credentials', variable: 'KUBE_CONFIG_FILE')]) {
+                echo "Using kubeconfig from: ${KUBE_CONFIG_FILE}"
+                env.KUBECONFIG = "${KUBE_CONFIG_FILE}"
+
+                // Verify the kubeconfig file exists
+                sh 'ls -l ${KUBE_CONFIG_FILE}' // Check if the file exists
+
+                // Verify Kubernetes access
+                sh 'kubectl get nodes'
+            }
+        }
+    }
+}
+
 
 
 
