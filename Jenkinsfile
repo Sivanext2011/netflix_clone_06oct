@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials') // Create DockerHub credentials in Jenkins
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
         DOCKERHUB_REPO = 'sivanext/netflix_clone'
-        DOCKER_IMAGE_TAG = "netflix_clone:${env.BUILD_ID}"
+        DOCKER_IMAGE_TAG = "sivanext/netflix_clone:${env.BUILD_ID}"
     }
 
     stages {
@@ -29,6 +29,33 @@ pipeline {
                         docker.image(DOCKER_IMAGE_TAG).push()
                     }
                 }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                sh 'kubectl apply -f k8s/deployment.yaml'
+            }
+        }
+
+        stage('Expose via Load Balancer') {
+            steps {
+                sh 'kubectl apply -f k8s/service.yaml'
+            }
+        }
+
+        stage('Run Unit Tests') {
+            steps {
+                sh 'python -m unittest discover tests'
+            }
+        }
+
+        stage('Deploy to Staging Namespace') {
+            when {
+                expression { currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
+            }
+            steps {
+                sh 'kubectl apply -f k8s/deployment-staging.yaml'
             }
         }
     }

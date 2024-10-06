@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: netflix-clone
+  namespace: production
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: netflix-clone
+  template:
+    metadata:
+      labels:
+        app: netflix-clone
+    spec:
+      containers:
+      - name: netflix-clone
+        image: sivanext/netflix_clone:latest
+        ports:
+        - containerPort: 5000
