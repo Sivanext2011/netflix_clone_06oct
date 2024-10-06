@@ -32,15 +32,19 @@ pipeline {
             }
         }
 
-        stage('Prepare Kubeconfig') {
-            steps {
-                // Load the kubeconfig file from Jenkins credentials
-                withCredentials([file(credentialsId: 'kubeconfig-credentials', variable: 'KUBE_CONFIG_FILE')]) {
-                    sh "cp ${KUBE_CONFIG_FILE} $KUBECONFIG"
-		    sh "cat $KUBECONFIG"		
-                }
-            }
-        }
+	stage('Prepare Kubeconfig') {
+	    steps {
+        	script {
+	            withCredentials([file(credentialsId: 'kubeconfig-credentials', variable: 'KUBE_CONFIG_FILE')]) {
+                	echo "Using kubeconfig from: ${KUBE_CONFIG_FILE}"
+        	        sh "cat ${KUBE_CONFIG_FILE}" // Be careful with sensitive info
+	                env.KUBECONFIG = "${KUBE_CONFIG_FILE}"
+        	    }
+	        }
+	    }
+	}
+
+
 
         stage('Deploy to Kubernetes') {
             steps {
