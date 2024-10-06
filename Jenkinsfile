@@ -89,7 +89,8 @@ pipeline {
             steps {
                 script {
                     sh 'export KUBECONFIG=${WORKSPACE}/kubeconfig.txt'
-                    sh 'kubectl apply -f k8s/deployment-staging.yaml'
+                    sh 'kubectl apply -f k8s/deployment-prod.yaml'
+					sh 'kubectl apply -f k8s/service-prod.yaml'
                 }
             }
         }
