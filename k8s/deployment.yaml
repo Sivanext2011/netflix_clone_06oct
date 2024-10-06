@@ -16,10 +16,10 @@ spec:
         app: netflix-clone
     spec:
       imagePullSecrets:
-      - name: my-registry-secret  # Reference your secret here
+      - name: my-registry-secret
       containers:
       - name: netflix-clone
-        image: sivanext/netflix_clone:latest
-        imagePullPolicy: Always  # Correct indentation here
+        image: sivanext/netflix_clone:latest # Placeholder that sed will replace
+        imagePullPolicy: Always
         ports:
         - containerPort: 5000
