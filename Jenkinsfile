@@ -39,6 +39,7 @@ stage('Prepare Kubeconfig') {
             withCredentials([file(credentialsId: 'kubeconfig-credentials', variable: 'KUBE_CONFIG_FILE')]) {
                 echo "Using kubeconfig from: ${KUBE_CONFIG_FILE}"
                 env.KUBECONFIG = "${KUBE_CONFIG_FILE}"
+		writeFile(file: 'kubeconfig.txt', text: "${KUBE_CONFIG_FILE}")
 
                 // Verify the kubeconfig file exists
                 sh 'ls -l ${KUBE_CONFIG_FILE}' // Check if the file exists
@@ -55,6 +56,7 @@ stage('Prepare Kubeconfig') {
 
         stage('Deploy to Kubernetes') {
             steps {
+		env.KUBECONFIG = "${env.WORKSPACE}/kubeconfig.txt"
  		sh 'kubectl get nodes'
                 sh 'kubectl apply -f k8s/deployment.yaml'
             }
@@ -62,12 +64,14 @@ stage('Prepare Kubeconfig') {
 
         stage('Expose via Load Balancer') {
             steps {
+		env.KUBECONFIG = "${env.WORKSPACE}/kubeconfig.txt"
                 sh 'kubectl apply -f k8s/service.yaml'
             }
         }
 
         stage('Run Unit Tests') {
             steps {
+		env.KUBECONFIG = "${env.WORKSPACE}/kubeconfig.txt"
                 sh 'python -m unittest discover tests'
             }
         }
@@ -77,6 +81,7 @@ stage('Prepare Kubeconfig') {
                 expression { currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
             }
             steps {
+		env.KUBECONFIG = "${env.WORKSPACE}/kubeconfig.txt"
                 sh 'kubectl apply -f k8s/deployment-staging.yaml'
             }
         }
