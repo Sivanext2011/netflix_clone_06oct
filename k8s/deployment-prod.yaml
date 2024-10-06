@@ -20,6 +20,6 @@ spec:
       containers:
       - name: netflix-clone
         image: sivanext/netflix_clone:latest
-	imagePullPolicy: Always
+        imagePullPolicy: Always
         ports:
         - containerPort: 5000
