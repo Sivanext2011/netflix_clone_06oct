@@ -5,6 +5,7 @@ pipeline {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
         DOCKERHUB_REPO = 'sivanext/netflix_clone'
         DOCKER_IMAGE_TAG = "sivanext/netflix_clone:${env.BUILD_ID}"
+        KUBECONFIG = "${env.WORKSPACE}/kubeconfig.txt" // Define KUBECONFIG in environment block
     }
 
     stages {
@@ -44,8 +45,8 @@ pipeline {
                         // Verify the kubeconfig file exists
                         sh 'ls -l kubeconfig.txt' // Check if the file exists
 
-                        // Set the KUBECONFIG environment variable
-                        env.KUBECONFIG = "${env.WORKSPACE}/kubeconfig.txt"
+                        // Set the KUBECONFIG environment variable for the shell command
+                        sh 'export KUBECONFIG=${WORKSPACE}/kubeconfig.txt'
 
                         // Verify Kubernetes access
                         sh 'kubectl get nodes'
@@ -57,7 +58,7 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    env.KUBECONFIG = "${env.WORKSPACE}/kubeconfig.txt"
+                    sh 'export KUBECONFIG=${WORKSPACE}/kubeconfig.txt'
                     sh 'kubectl apply -f k8s/deployment.yaml'
                 }
             }
@@ -66,7 +67,7 @@ pipeline {
         stage('Expose via Load Balancer') {
             steps {
                 script {
-                    env.KUBECONFIG = "${env.WORKSPACE}/kubeconfig.txt"
+                    sh 'export KUBECONFIG=${WORKSPACE}/kubeconfig.txt'
                     sh 'kubectl apply -f k8s/service.yaml'
                 }
             }
@@ -75,7 +76,7 @@ pipeline {
         stage('Run Unit Tests') {
             steps {
                 script {
-                    env.KUBECONFIG = "${env.WORKSPACE}/kubeconfig.txt"
+                    sh 'export KUBECONFIG=${WORKSPACE}/kubeconfig.txt'
                     sh 'python -m unittest discover tests'
                 }
             }
@@ -87,7 +88,7 @@ pipeline {
             }
             steps {
                 script {
-                    env.KUBECONFIG = "${env.WORKSPACE}/kubeconfig.txt"
+                    sh 'export KUBECONFIG=${WORKSPACE}/kubeconfig.txt'
                     sh 'kubectl apply -f k8s/deployment-staging.yaml'
                 }
             }
